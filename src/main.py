@@ -1,8 +1,31 @@
 import requests
 from dotenv import load_dotenv
 import os
+from datetime import datetime
+from database import Base, WeatherData
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
 
 load_dotenv()
+
+APIKEY = os.getenv("APIKEY")
+
+PGDB = os.getenv("PGDB")
+PGUSER = os.getenv("PGUSER")
+PGPASSWORD = os.getenv("PGPASSWORD")
+PGHOST = os.getenv("PGHOST")
+PGPORT = os.getenv("PGPORT")
+
+DB_URL = (
+    f"postgresql://{PGUSER}:{PGPASSWORD}"
+    f"@{PGHOST}:{PGPORT}/{PGDB}"
+)
+
+engine = create_engine(DB_URL)
+Session = sessionmaker(bind=engine)
+
+def create_table():
+    Base.create_all(engine)
 
 def extract_temp_data(lat, lon, lang, units, apikey):
     url = f"https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={apikey}&lang={lang}&units={units}"
@@ -25,6 +48,7 @@ def tranform_temp_data(data):
     velocidade_vento = data['wind']['speed']
     direcao_vento = data['wind']['deg']
     cidade = data['name']
+    timestamp = datetime.now()
 
     dados_transformados = {
         "clima": clima,
@@ -39,12 +63,23 @@ def tranform_temp_data(data):
         "velocidade_vento": velocidade_vento,
         "direcao_vento": direcao_vento,
         "cidade": cidade,
+        "timestamp": timestamp
     }
 
     return dados_transformados
 
+def load_temp_data(dados_transformados):
+    session = Session()
+    new_register = WeatherData(**dados_transformados)
+    session.add(new_register)
+    session.commit()
+    session.close()
+
+    print(f"[{dados_transformados['timestamp']}] Dados salvos no PostgreSQL!")
+
 if __name__== "__main__":
-    APIKEY = os.getenv("APIKEY")
+
+    create_table()
 
     lat = -5.917550296148145
     lon = -35.20936332816193
@@ -53,5 +88,4 @@ if __name__== "__main__":
 
     data = extract_temp_data(lat, lon, lang, units, apikey=APIKEY)
     new_data = tranform_temp_data(data)
-
-    print(new_data)
+    load_temp_data(new_data)
