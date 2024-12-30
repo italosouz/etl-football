@@ -25,7 +25,7 @@ engine = create_engine(DB_URL)
 Session = sessionmaker(bind=engine)
 
 def create_table():
-    Base.create_all(engine)
+    Base.metadata.create_all(engine)
 
 def extract_temp_data(lat, lon, lang, units, apikey):
     url = f"https://api.openweathermap.org/data/2.5/weather?lat={lat}&lon={lon}&appid={apikey}&lang={lang}&units={units}"
